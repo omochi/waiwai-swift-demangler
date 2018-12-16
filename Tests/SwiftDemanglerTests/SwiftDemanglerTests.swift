@@ -7,6 +7,7 @@ final class SwiftDemanglerTests: XCTestCase {
                        "ExampleNumber.isEven(number: Swift.Int) -> Swift.Bool")
     }
 
+    
 
     static var allTests = [
         ("testEx1", testEx1),
