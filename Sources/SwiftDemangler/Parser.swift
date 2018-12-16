@@ -6,6 +6,7 @@ public class Parser {
         case invalidStartCharacter(Character)
         case invalidNumber(Character)
         case invalidIDCharacter(Character)
+        case invalidCharacter(Character)
     }
     
     private let chars: [Character]
@@ -17,6 +18,7 @@ public class Parser {
     private let char9: Character
     private let charSA: Character
     private let charSZ: Character
+    private let charSY: Character
     private let charLA: Character
     private let charLZ: Character
     private let charUScore: Character
@@ -31,6 +33,7 @@ public class Parser {
         self.char9 = Character("9")
         self.charSA = Character("a")
         self.charSZ = Character("z")
+        self.charSY = Character("y")
         self.charLA = Character("A")
         self.charLZ = Character("Z")
         self.charUScore = Character("_")
@@ -59,18 +62,48 @@ public class Parser {
     }
     
     private func parseModule() throws -> Node {
-        return try parseIdentifier()
+        let id = try parseIdentifier()
+        return Node.module(id)
     }
     
     private func parseEntitySpec() throws -> Node {
-        return try readAsGarbageToEnd()
+        let name = try parseIdentifier()
+        let labelList = try parseLabelList()
+        let sig = try readAsGarbageToEnd()
+        return Node.function(name: name, labelList: labelList)
+    }
+    
+    private func parseLabelList() throws -> [Identifier] {
+        if let _ = (mayReadChar { $0 == charSY }) {
+            return []
+        }
+ 
+        var list: [Identifier] = []
+        while true {
+            let pos = self.pos
+            if let _ = (mayReadChar { $0 == charUScore }) {
+                let id = Identifier(pos: pos, string: "")
+                list.append(id)
+                continue
+            }
+            
+            do {
+                let id = try parseIdentifier()
+                list.append(id)
+            } catch {
+                self.pos = pos
+                break
+            }
+        }
+        
+        return list
     }
 
-    private func parseIdentifier() throws -> Node {
+    private func parseIdentifier() throws -> Identifier {
         let pos = self.pos
         let len = try parseNatural()
         let id = try parseIdentifierString(length: len)
-        return Node.identifier(pos: pos, string: id)
+        return Identifier(pos: pos, string: id)
     }
     
     private func parseIdentifierString(length: Int) throws -> String {
