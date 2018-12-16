@@ -12,7 +12,12 @@ class ParserTests: XCTestCase {
                                         body: .function(name: Identifier(pos: 0, string: "isEven"),
                                                         labelList: [
                                                             Identifier(pos: 0, string: "number")
-                                            ]))
+                                            ],
+                                                        retType: Type.single(name: "Swift.Bool"),
+                                                        argType: Type.list([
+                                                            Type.single(name: "Swift.Int")
+                    ])
+                            ))
             )
             )
         )

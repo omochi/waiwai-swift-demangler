@@ -7,6 +7,7 @@ public class Parser {
         case invalidNumber(Character)
         case invalidIDCharacter(Character)
         case invalidCharacter(Character)
+        case invalidType
     }
     
     private let chars: [Character]
@@ -21,6 +22,7 @@ public class Parser {
     private let charSY: Character
     private let charLA: Character
     private let charLZ: Character
+    private let charLS: Character
     private let charUScore: Character
     private let charDollar: Character
     
@@ -36,6 +38,7 @@ public class Parser {
         self.charSY = Character("y")
         self.charLA = Character("A")
         self.charLZ = Character("Z")
+        self.charLS = Character("S")
         self.charUScore = Character("_")
         self.charDollar = Character("$")
     }
@@ -69,12 +72,74 @@ public class Parser {
     private func parseEntitySpec() throws -> Node {
         let name = try parseIdentifier()
         let labelList = try parseLabelList()
-        let sig = try readAsGarbageToEnd()
-        return Node.function(name: name, labelList: labelList)
+        let (ret, arg) = try parseFunctionSignature()
+        return Node.function(name: name, labelList: labelList,
+                             retType: ret, argType: arg)
+    }
+    
+    private func parseFunctionSignature() throws -> (Type, Type) {
+        let ret = try parseParamsType()
+        let arg = try parseParamsType()
+        return (ret, arg)
+    }
+    
+    private func parseParamsType() throws -> Type {
+        return try parseType()
+    }
+    
+    private func parseType() throws -> Type {
+        if let _ = (mayParse { try parseEmptyList() }) {
+            return Type.list([])
+        }
+        
+        let t0 = try parseAnyGenericType()
+        
+        let pos = self.pos
+        
+        guard let c = readChar() else {
+            return t0
+        }
+        if c != charUScore {
+            self.pos = pos
+            return t0
+        }
+        
+        var ts: [Type] = [t0]
+        
+        while true {
+            guard let t1 = (mayParse { try parseType() }) else {
+                break
+            }
+            ts.append(t1)
+        }
+        
+        return Type.list(ts)
+    }
+    
+    private func parseAnyGenericType() throws -> Type {
+        guard let c = readChar() else {
+            throw Error.invalidEndOfString
+        }
+        
+        if c == charLS {
+            guard let d = readChar() else {
+                throw Error.invalidEndOfString
+            }
+            switch d {
+            case Character("i"): return Type.single(name: "Swift.Int")
+            case Character("b"): return Type.single(name: "Swift.Bool")
+            case Character("S"): return Type.single(name: "Swift.String")
+            case Character("f"): return Type.single(name: "Swift.Float")
+            default: break
+            }
+            throw Error.invalidCharacter(d)
+        }
+        
+        throw Error.invalidCharacter(c)
     }
     
     private func parseLabelList() throws -> [Identifier] {
-        if let _ = (mayReadChar { $0 == charSY }) {
+        if let _ = (mayParse { try parseEmptyList() }) {
             return []
         }
  
@@ -87,16 +152,23 @@ public class Parser {
                 continue
             }
             
-            do {
-                let id = try parseIdentifier()
-                list.append(id)
-            } catch {
-                self.pos = pos
+            guard let id = (mayParse { try parseIdentifier() }) else {
                 break
             }
+            list.append(id)
         }
         
         return list
+    }
+    
+    private func parseEmptyList() throws -> Void {
+        guard let c = readChar() else {
+            throw Error.invalidEndOfString
+        }
+        guard c == charSY else {
+            throw Error.invalidCharacter(c)
+        }
+        return
     }
 
     private func parseIdentifier() throws -> Identifier {
@@ -152,6 +224,16 @@ public class Parser {
         }
         
         return value
+    }
+    
+    private func mayParse<T>(_ f: () throws -> T) -> T? {
+        let pos = self.pos
+        do {
+            return try f()
+        } catch {
+            self.pos = pos
+            return nil
+        }
     }
     
     private func isIDStart(_ char: Character) -> Bool {
