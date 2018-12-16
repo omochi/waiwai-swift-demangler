@@ -3,7 +3,7 @@ import SwiftDemangler
 
 class ParserTests: XCTestCase {
     func test1() throws {
-        let parser = Parser(string: "$S13ExampleNumber6isEven6numberSbSi_tKF")
+        let parser = Parser(string: "$S13ExampleNumber6isEven6numberSbSi_tF")
         let node = try parser.parse()
         
         XCTAssert(node.isEqualString(

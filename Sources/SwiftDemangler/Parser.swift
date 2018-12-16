@@ -73,6 +73,7 @@ public class Parser {
         let name = try parseIdentifier()
         let labelList = try parseLabelList()
         let (ret, arg) = try parseFunctionSignature()
+        _ = try eatChar { $0 == Character("F") }
         return Node.function(name: name, labelList: labelList,
                              retType: ret, argType: arg)
     }
@@ -112,6 +113,8 @@ public class Parser {
             }
             ts.append(t1)
         }
+        
+        _ = try eatChar { $0 == Character("t") }
         
         return Type.list(ts)
     }
@@ -162,13 +165,7 @@ public class Parser {
     }
     
     private func parseEmptyList() throws -> Void {
-        guard let c = readChar() else {
-            throw Error.invalidEndOfString
-        }
-        guard c == charSY else {
-            throw Error.invalidCharacter(c)
-        }
-        return
+        try eatChar { $0 == charSY }
     }
 
     private func parseIdentifier() throws -> Identifier {
@@ -182,16 +179,11 @@ public class Parser {
         var value: [Character] = []
         
         for i in 0..<length {
-            guard let c = readChar() else {
-                throw Error.invalidEndOfString
-            }
-            if i == 0 {
-                guard isIDStart(c) else {
-                    throw Error.invalidIDCharacter(c)
-                }
-            } else {
-                guard isIDBody(c) else {
-                    throw Error.invalidIDCharacter(c)
+            let c = try eatChar {
+                if i == 0 {
+                    return isIDStart($0)
+                } else {
+                    return isIDBody($0)
                 }
             }
             value.append(c)
@@ -208,12 +200,8 @@ public class Parser {
         
         var value: Int = 0
         
-        guard let c = readChar() else {
-            throw Error.invalidEndOfString
-        }
-        guard isNaturalStart(c) else {
-            throw Error.invalidNumber(c)
-        }
+        let c = try eatChar { isNaturalStart($0) }
+
         value += toI(c)
         
         while true {
@@ -281,15 +269,8 @@ public class Parser {
     private func parseStart() throws -> Node {
         let pos = self.pos
         
-        guard let c0 = readChar() else { throw Error.invalidEndOfString }
-        guard c0 == charDollar else {
-            throw Error.invalidStartCharacter(c0)
-        }
-        
-        guard let c1 = readChar() else { throw Error.invalidEndOfString }
-        guard c1 == Character("S") else {
-            throw Error.invalidStartCharacter(c1)
-        }
+        let c0 = try eatChar { $0 == charDollar }
+        let c1 = try eatChar { $0 == Character("S") }
         
         return Node.start(pos: pos, string: String([c0, c1]))
     }
@@ -304,6 +285,16 @@ public class Parser {
             return nil
         }
         return char
+    }
+    
+    private func eatChar(_ pred: (Character) -> Bool) throws -> Character {
+        guard let c = readChar() else {
+            throw Error.invalidEndOfString
+        }
+        guard pred(c) else {
+            throw Error.invalidCharacter(c)
+        }
+        return c
     }
     
     private func readChar() -> Character? {
