@@ -43,14 +43,14 @@ public class Parser {
         self.charDollar = Character("$")
     }
     
-    public func parse() throws -> Node {
+    public func parse() throws -> Symbol {
         return try parseGlobal()
     }
     
-    private func parseGlobal() throws -> Node {
+    private func parseGlobal() throws -> Symbol {
         let start = try parseStart()
         let entity = try parseEntity()
-        return Node.symbol(start: start, entity: entity)
+        return Symbol(start: start, entity: entity)
     }
     
     private func parseEntity() throws -> Node {
@@ -165,7 +165,7 @@ public class Parser {
     }
     
     private func parseEmptyList() throws -> Void {
-        try eatChar { $0 == charSY }
+        _ = try eatChar { $0 == charSY }
     }
 
     private func parseIdentifier() throws -> Identifier {
@@ -266,13 +266,11 @@ public class Parser {
         return Node.garbage(pos: pos, string: String(chars))
     }
     
-    private func parseStart() throws -> Node {
-        let pos = self.pos
-        
+    private func parseStart() throws -> String {        
         let c0 = try eatChar { $0 == charDollar }
         let c1 = try eatChar { $0 == Character("S") }
         
-        return Node.start(pos: pos, string: String([c0, c1]))
+        return String([c0, c1])
     }
     
     private func mayReadChar(_ pred: (Character) -> Bool) -> Character? {

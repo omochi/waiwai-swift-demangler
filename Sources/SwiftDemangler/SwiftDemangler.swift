@@ -1,3 +1,5 @@
 public func demangle(name: String) -> String {
-    return name //TODO: implement
+    let p = Parser(string: name)
+    let n = try! p.parse()
+    return n.description
 }
